@@ -118,7 +118,9 @@ class DetailsScreen(Screen):
 
 class GradesTable(DataTable):
     BINDINGS = [
-        Binding("enter", "select_cursor", "Pokaż szczegóły", priority=True)
+        Binding("enter", "select_cursor", "Pokaż szczegóły", priority=True),
+        Binding("j", "cursor_down", "W dół"),
+        Binding("k", "cursor_up", "W górę"),
     ]
 
 class DashboardScreen(Screen):
