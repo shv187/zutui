@@ -420,6 +420,8 @@ class ZutApp(App):
                 with open(CONFIG_FILE, "r") as f:
                     creds = json.load(f)
                     password = keyring.get_password("zutui", creds["username"])
+                    if password is None:
+                        raise ValueError("Hasło nie zostało znalezione")
                     self.zut_client = ZUT(creds["username"], password)
                     self.push_screen(DashboardScreen())
             except:
