@@ -1,7 +1,7 @@
-
 import json
 import os
-import time
+import keyring
+from keyring.errors import KeyringError
 from datetime import datetime
 from textual.app import App, ComposeResult
 from textual.containers import Container
@@ -10,11 +10,9 @@ from textual.screen import Screen
 from textual.binding import Binding
 
 from .zut_client import ZUT
+from .config import get_config_path
 
-USER_HOME = os.path.expanduser("~")
-APP_DIR = os.path.join(USER_HOME, "zutui")
-if not os.path.exists(APP_DIR):
-    os.makedirs(APP_DIR)
+APP_DIR = get_config_path()
 
 CONFIG_FILE = os.path.join(APP_DIR, "config.json")
 REFRESH_INTERVAL = 1800
@@ -58,9 +56,20 @@ class LoginScreen(Screen):
             if success:
                 try:
                     with open(CONFIG_FILE, "w") as f:
-                        json.dump({"username": user, "password": password}, f)
+                        json.dump({"username": user}, f)
+                        keyring.set_password("zutui", user, password)
+                except KeyringError as e:
+                    error = e
+                    self.app.call_from_thread(
+                            lambda:
+                                self.app.notify(
+                                    f"Błąd: {str(error)}",
+                                    title="Błąd zapisu hasła do systemowego menedżera haseł",
+                                    severity="warning",
+                                    timeout=5
+                                    )
+                            )
                 except: pass
-                
                 def do_switch():
                     self.app.switch_screen(DashboardScreen())
                 self.app.call_from_thread(do_switch)
@@ -410,7 +419,10 @@ class ZutApp(App):
             try:
                 with open(CONFIG_FILE, "r") as f:
                     creds = json.load(f)
-                    self.zut_client = ZUT(creds["username"], creds["password"])
+                    password = keyring.get_password("zutui", creds["username"])
+                    if password is None:
+                        raise ValueError("Hasło nie zostało znalezione")
+                    self.zut_client = ZUT(creds["username"], password)
                     self.push_screen(DashboardScreen())
             except:
                 self.push_screen(LoginScreen())
